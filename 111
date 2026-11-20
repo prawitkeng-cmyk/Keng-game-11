@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>จับผิดภาพลับสมอง - Spot the Difference</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Prompt', sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    body {
+      background: radial-gradient(circle at top left, #1e1b4b, #0f172a 55%, #090d16);
+      color: #f8fafc;
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.55);
+    }
+    .canvas-wrapper {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid rgba(99, 102, 241, 0.45);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      cursor: crosshair;
+      background: #0f172a;
+      transition: transform 0.15s ease, border-color 0.2s ease;
+    }
+    .canvas-wrapper:hover {
+      border-color: rgba(129, 140, 248, 0.85);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .shake {
+      animation: shake 0.35s ease-in-out;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translate(-50%, 0) scale(0.9); }
+      100% { opacity: 0; transform: translate(-50%, -42px) scale(1.15); }
+    }
+    .floating-badge {
+      position: absolute;
+      pointer-events: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      animation: floatUp 0.9s ease-out forwards;
+      z-index: 30;
+      white-space: nowrap;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.5);
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Top Navbar -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-xl font-bold">
+          🔍
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent leading-tight">
+            จับผิดภาพลับสมอง
+          </h1>
+          <p class="text-[11px] text-slate-400">Spot the Difference • ฝึกสายตาและความไว</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="btnSound" onclick="toggleSound()" title="เปิด/ปิดเสียง"
+          class="p-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+          🔊
+        </button>
+        <button onclick="openLeaderboardModal()"
+          class="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition">
+          <span>🏆</span>
+          <span>อันดับออนไลน์</span>
+        </button>
+        <button onclick="openSettingsModal()" title="ตั้งค่าการเชื่อมต่อฐานข้อมูล"
+          class="p-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">
+          ⚙️
+        </button>
+        <button id="btnUserBadge" onclick="openUserModal()"
+          class="px-3 py-2 rounded-xl bg-indigo-600/25 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-200 text-xs sm:text-sm font-semibold flex items-center gap-2 transition">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="navUserName">ตั้งชื่อผู้เล่น</span>
+          <span class="text-[11px] opacity-75">✎</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-5 flex flex-col justify-center">
+
+    <!-- LOBBY / HOME VIEW -->
+    <section id="viewLobby" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <!-- Left Welcome & Personal Stats -->
+      <div class="lg:col-span-7 glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              ออนไลน์พร้อมบันทึกสถิติ
+            </span>
+            <button onclick="openUserModal()" class="text-xs text-indigo-300 hover:text-indigo-200 underline underline-offset-4">
+              เปลี่ยนชื่อ / ใช้ชื่อเดิมเล่นต่อ
+            </button>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-2">
+            สวัสดี, <span id="lobbyUserName" class="text-indigo-400">ผู้เล่นใหม่</span>!
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base mb-6">
+            พร้อมฝึกสายตาและทำลายสถิติใหม่ของคุณหรือยัง? ใช้ชื่อเดิมเพื่อสะสมสถิติต่อเนื่องได้ทันที
+          </p>
+
+          <!-- Personal Stats Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-3.5 text-center">
+              <div class="text-xs text-slate-400 mb-1">ด่านสูงสุด</div>
+              <div id="statMaxLevel" class="text-xl sm:text-2xl font-extrabold text-indigo-400">ด่าน 1</div>
+            </div>
+            <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-3.5 text-center">
+              <div class="text-xs text-slate-400 mb-1">คะแนนรวมสูงสุด</div>
+              <div id="statBestScore" class="text-xl sm:text-2xl font-extrabold text-amber-400">0</div>
+            </div>
+            <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-3.5 text-center">
+              <div class="text-xs text-slate-400 mb-1">เวลาเร็วสุด/ด่าน</div>
+              <div id="statBestTime" class="text-xl sm:text-2xl font-extrabold text-emerald-400">-</div>
+            </div>
+            <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-3.5 text-center">
+              <div class="text-xs text-slate-400 mb-1">จำนวนรอบที่เล่น</div>
+              <div id="statGamesPlayed" class="text-xl sm:text-2xl font-extrabold text-pink-400">0</div>
+            </div>
+          </div>
+
+          <!-- Game Rules -->
+          <div class="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 mb-6">
+            <h3 class="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-1.5">
+              <span>✨</span> กติกาและการคิดคะแนน:
+            </h3>
+            <ul class="text-xs sm:text-sm text-slate-300 space-y-1.5 list-disc list-inside">
+              <li>เปรียบเทียบภาพซ้ายและขวา แล้วแตะจุดที่แตกต่างกันให้ครบทุกจุด</li>
+              <li><strong>ยิ่งเร็ว ยิ่งได้คะแนนเยอะ:</strong> รับโบนัสตามสัดส่วนเวลาที่เหลือ</li>
+              <li><strong>ระวังกดมั่ว:</strong> คลิกผิดจุดจะถูกหักเวลา <span class="text-rose-400 font-semibold">3 วินาที</span> และลดคะแนน</li>
+              <li>ความยากจะเพิ่มขึ้นเรื่อยๆ ทั้งจำนวนจุด ขนาด และรายละเอียดของภาพ</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button onclick="startNewGame()"
+            class="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-base sm:text-lg shadow-lg shadow-indigo-600/30 transition transform active:scale-[0.99] flex items-center justify-center gap-2">
+            <span>▶</span>
+            <span>เริ่มเล่นด่านที่ 1</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Mini Online Leaderboard -->
+      <div class="lg:col-span-5 glass-card rounded-3xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg">
+                🏆
+              </div>
+              <div>
+                <h3 class="text-base sm:text-lg font-bold text-white leading-tight">อันดับยอดนักจับผิด</h3>
+                <p id="syncStatusText" class="text-[11px] text-emerald-400">กำลังซิงค์ข้อมูลออนไลน์...</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="fetchGlobalLeaderboard(true)" title="รีเฟรชอันดับ"
+                class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition">
+                🔄
+              </button>
+              <button onclick="openLeaderboardModal()"
+                class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-medium transition">
+                ดูทั้งหมด
+              </button>
+            </div>
+          </div>
+
+          <div id="lobbyLeaderboardList" class="space-y-2.5 max-h-[340px] overflow-y-auto custom-scroll pr-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span>ฐานข้อมูล: Google Sheets Online</span>
+          <span id="totalPlayersCount">ผู้เล่นทั้งหมด: -</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- GAMEPLAY VIEW -->
+    <section id="viewGame" class="hidden flex-col gap-4">
+      <!-- Top HUD Bar -->
+      <div class="glass-card rounded-2xl p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 sm:gap-5">
+          <div class="px-3.5 py-1.5 rounded-xl bg-indigo-600/30 border border-indigo-500/40">
+            <span class="text-xs text-indigo-300 block">ระดับความยาก</span>
+            <span id="hudLevel" class="text-base sm:text-lg font-extrabold text-white">ด่าน 1</span>
+          </div>
+          <div>
+            <span class="text-xs text-slate-400 block">ธีมฉาก</span>
+            <span id="hudTheme" class="text-sm sm:text-base font-semibold text-slate-200">อวกาศ</span>
+          </div>
+          <div>
+            <span class="text-xs text-slate-400 block">พบแล้ว</span>
+            <span id="hudFound" class="text-base sm:text-lg font-extrabold text-emerald-400">0 / 3</span>
+          </div>
+        </div>
+
+        <!-- Timer Bar -->
+        <div class="flex-1 min-w-[180px] max-w-md">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-300 font-medium">เวลาที่เหลือ</span>
+            <span id="hudTimeText" class="font-bold text-amber-300">60.0 วิ</span>
+          </div>
+          <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80 p-0.5">
+            <div id="hudTimeBar" class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-100" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- Score & Controls -->
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <div class="text-right mr-1">
+            <span class="text-xs text-slate-400 block">คะแนนรวม</span>
+            <span id="hudScore" class="text-lg sm:text-xl font-extrabold text-amber-400">0</span>
+          </div>
+          <button id="btnHint" onclick="useHint()"
+            class="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition">
+            <span>💡</span>
+            <span>ตัวช่วย (<span id="hudHints">2</span>)</span>
+          </button>
+          <button onclick="confirmQuitGame()"
+            class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-500/40 text-slate-300 hover:text-rose-300 text-xs sm:text-sm font-medium transition">
+            ออก
+          </button>
+        </div>
+      </div>
+
+      <!-- Dual Canvases -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-xs font-semibold text-indigo-300">ภาพต้นฉบับ (ซ้าย)</span>
+            <span class="text-[11px] text-slate-400">แตะจุดที่ต่างได้ทั้ง 2 ภาพ</span>
+          </div>
+          <div id="wrapLeft" class="canvas-wrapper">
+            <canvas id="canvasLeft" width="600" height="450"></canvas>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-xs font-semibold text-pink-300">ภาพเปรียบเทียบ (ขวา)</span>
+            <span class="text-[11px] text-slate-400">กดผิดหัก 3 วินาที</span>
+          </div>
+          <div id="wrapRight" class="canvas-wrapper">
+            <canvas id="canvasRight" width="600" height="450"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: SET / SWITCH USER -->
+  <div id="modalUser" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-3xl max-w-md w-full p-6 sm:p-7 border border-indigo-500/30">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-2xl">
+          👤
+        </div>
+        <div>
+          <h3 class="text-lg sm:text-xl font-bold text-white">ตั้งชื่อผู้เล่น / ใช้ชื่อเดิม</h3>
+          <p class="text-xs text-slate-400">พิมพ์ชื่อเดิมเพื่อดึงสถิติเก่ากลับมาเล่นต่อได้เลย</p>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs font-medium text-slate-300 mb-1.5">ชื่อผู้เล่น (Nickname)</label>
+        <input id="inputUserName" type="text" maxlength="20" placeholder="เช่น Keng_AI, นักสืบสายตาไว..."
+          class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 focus:border-indigo-500 focus:outline-none text-white text-sm sm:text-base"
+          onkeydown="if(event.key==='Enter') saveUserName()" />
+        <p id="userErrorMsg" class="text-xs text-rose-400 mt-1.5 hidden">กรุณากรอกชื่อผู้เล่นอย่างน้อย 2 ตัวอักษร</p>
+      </div>
+
+      <!-- Quick Switch Previous Users -->
+      <div id="recentUsersBox" class="mb-5 hidden">
+        <span class="block text-xs text-slate-400 mb-2">บัญชีที่เคยเล่นในเครื่องนี้ (คลิกเพื่อสลับทันที):</span>
+        <div id="recentUsersList" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <div class="flex gap-2.5">
+        <button id="btnCancelUser" onclick="closeUserModal()"
+          class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition hidden">
+          ยกเลิก
+        </button>
+        <button onclick="saveUserName()"
+          class="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-indigo-600/25 transition">
+          บันทึกและเข้าเล่น
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LEVEL CLEAR / GAME OVER -->
+  <div id="modalResult" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-3xl max-w-md w-full p-6 sm:p-7 text-center border border-indigo-500/30">
+      <div id="resultIcon" class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-4xl">
+        🎉
+      </div>
+      <h3 id="resultTitle" class="text-2xl font-extrabold text-white mb-1">ผ่านด่านสำเร็จ!</h3>
+      <p id="resultSubtitle" class="text-xs sm:text-sm text-slate-300 mb-5">ยอดเยี่ยมมาก สายตาเฉียบคมสุดๆ</p>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 mb-5 space-y-2.5 text-sm">
+        <div class="flex justify-between">
+          <span class="text-slate-400">เวลาที่ใช้ในด่านนี้:</span>
+          <span id="resTimeUsed" class="font-bold text-emerald-400">12.4 วิ</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">โบนัสความไว (ตามสัดส่วนเวลา):</span>
+          <span id="resTimeBonus" class="font-bold text-amber-400">+480 คะแนน</span>
+        </div>
+        <div class="border-t border-slate-800 pt-2 flex justify-between text-base">
+          <span class="font-semibold text-white">คะแนนรวมปัจจุบัน:</span>
+          <span id="resTotalScore" class="font-extrabold text-indigo-400">1,250</span>
+        </div>
+      </div>
+
+      <div id="resultActions" class="flex flex-col sm:flex-row gap-2.5">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: FULL LEADERBOARD -->
+  <div id="modalLeaderboard" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-3xl max-w-2xl w-full p-6 sm:p-7 border border-amber-500/30 flex flex-col max-h-[88vh]">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl">
+            🏆
+          </div>
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold text-white">ตารางอันดับออนไลน์ (Top 30)</h3>
+            <p class="text-xs text-slate-400">จัดอันดับตามคะแนนรวมสูงสุด • อัปเดตร่วมกันทุกคน</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchGlobalLeaderboard(true)"
+            class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition">
+            🔄 รีเฟรช
+          </button>
+          <button onclick="closeLeaderboardModal()"
+            class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-y-auto custom-scroll flex-1 pr-1">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-xs text-slate-400">
+              <th class="py-2.5 px-3">อันดับ</th>
+              <th class="py-2.5 px-3">ผู้เล่น</th>
+              <th class="py-2.5 px-3 text-center">ด่านสูงสุด</th>
+              <th class="py-2.5 px-3 text-right">เวลาเร็วสุด</th>
+              <th class="py-2.5 px-3 text-right">คะแนนสูงสุด</th>
+            </tr>
+          </thead>
+          <tbody id="fullLeaderboardBody" class="divide-y divide-slate-800/60 text-sm">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS (APPS SCRIPT URL) -->
+  <div id="modalSettings" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-3xl max-w-lg w-full p-6 border border-slate-700">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>⚙️</span> ตั้งค่าฐานข้อมูลอันดับออนไลน์
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 mb-3 leading-relaxed">
+        เชื่อมต่อกับ Google Sheets Web App เพื่อให้ผู้เล่นทุกคนที่เปิดผ่านลิงก์เห็นตารางอันดับร่วมกันแบบเรียลไทม์
+      </p>
+      <label class="block text-xs font-medium text-slate-300 mb-1.5">Google Apps Script Web App URL (/exec)</label>
+      <input id="inputScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"
+        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none mb-4" />
+      <div class="flex justify-end gap-2">
+        <button onclick="resetDefaultScriptUrl()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">
+          คืนค่าเริ่มต้น
+        </button>
+        <button onclick="saveSettingsUrl()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">
+          บันทึกการตั้งค่า
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. CONFIGURATION & SAFE STORAGE (รองรับ Google Sites iframe 100%)
+    // =========================================================================
+    const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxD_x5lNgFt4ufIHmNb5frT9RoEu9MPxGuTD3yLPmtVVRw5O5tk9Rf8cBgO8E16HIec/exec";
+
+    const SafeStorage = (() => {
+      const mem = {};
+      return {
+        get(key) {
+          try {
+            return window.localStorage.getItem(key) ?? mem[key] ?? null;
+          } catch (e) {
+            return mem[key] ?? null;
+          }
+        },
+        set(key, val) {
+          mem[key] = String(val);
+          try {
+            window.localStorage.setItem(key, String(val));
+          } catch (e) {}
+        }
+      };
+    })();
+
+    const STORAGE_KEYS = {
+      CURRENT_USER: 'std_current_user_v2',
+      PROFILES: 'std_profiles_map_v2',
+      GLOBAL_CACHE: 'std_global_lb_cache_v2',
+      SCRIPT_URL: 'std_apps_script_url_v2'
+    };
+
+    function getScriptUrl() {
+      return SafeStorage.get(STORAGE_KEYS.SCRIPT_URL) || DEFAULT_APPS_SCRIPT_URL;
+    }
+
+    // =========================================================================
+    // 2. SOUND ENGINE (Web Audio API - ไม่ต้องพึ่งไฟล์เสียงภายนอก)
+    // =========================================================================
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function playTone(freq, type = 'sine', duration = 0.15, vol = 0.12) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function sfxCorrect() {
+      playTone(587.33, 'triangle', 0.12, 0.15);
+      setTimeout(() => playTone(880, 'triangle', 0.22, 0.15), 80);
+    }
+    function sfxWrong() {
+      playTone(180, 'sawtooth', 0.22, 0.12);
+    }
+    function sfxWin() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        setTimeout(() => playTone(f, 'triangle', 0.25, 0.14), i * 95);
+      });
+    }
+    function sfxLose() {
+      [330, 293.66, 246.94].forEach((f, i) => {
+        setTimeout(() => playTone(f, 'sawtooth', 0.28, 0.11), i * 140);
+      });
+    }
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('btnSound').textContent = soundEnabled ? '🔊' : '🔇';
+    }
+
+    // =========================================================================
+    // 3. USER PROFILE & ONLINE LEADERBOARD SYNC
+    // =========================================================================
+    let currentUser = SafeStorage.get(STORAGE_KEYS.CURRENT_USER) || '';
+    let globalLeaderboard = [];
+
+    function getAllProfiles() {
+      try {
+        return JSON.parse(SafeStorage.get(STORAGE_KEYS.PROFILES) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function getUserProfile(name) {
+      const key = name.trim().toLowerCase();
+      const profiles = getAllProfiles();
+      if (!profiles[key]) {
+        profiles[key] = {
+          name: name.trim(),
+          maxLevel: 1,
+          bestScore: 0,
+          bestTimePerLevel: null,
+          gamesPlayed: 0
+        };
+      }
+      return profiles[key];
+    }
+
+    function saveUserProfile(profile) {
+      const key = profile.name.trim().toLowerCase();
+      const profiles = getAllProfiles();
+      profiles[key] = profile;
+      SafeStorage.set(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    }
+
+    function mergeRemoteProfileIfBetter(name) {
+      const key = name.trim().toLowerCase();
+      const remote = globalLeaderboard.find(item => item.name.trim().toLowerCase() === key);
+      if (!remote) return;
+      const local = getUserProfile(name);
+      local.name = remote.name || local.name;
+      local.maxLevel = Math.max(local.maxLevel || 1, Number(remote.maxLevel) || 1);
+      local.bestScore = Math.max(local.bestScore || 0, Number(remote.bestScore) || 0);
+      if (remote.bestTimePerLevel) {
+        local.bestTimePerLevel = local.bestTimePerLevel
+          ? Math.min(local.bestTimePerLevel, Number(remote.bestTimePerLevel))
+          : Number(remote.bestTimePerLevel);
+      }
+      saveUserProfile(local);
+    }
+
+    function updateLobbyUI() {
+      if (!currentUser) {
+        openUserModal(true);
+        return;
+      }
+      mergeRemoteProfileIfBetter(currentUser);
+      const p = getUserProfile(currentUser);
+      document.getElementById('navUserName').textContent = p.name;
+      document.getElementById('lobbyUserName').textContent = p.name;
+      document.getElementById('statMaxLevel').textContent = `ด่าน ${p.maxLevel}`;
+      document.getElementById('statBestScore').textContent = p.bestScore.toLocaleString();
+      document.getElementById('statBestTime').textContent = p.bestTimePerLevel ? `${p.bestTimePerLevel.toFixed(1)} วิ` : '-';
+      document.getElementById('statGamesPlayed').textContent = p.gamesPlayed || 0;
+    }
+
+    function openUserModal(isForced = false) {
+      const modal = document.getElementById('modalUser');
+      const input = document.getElementById('inputUserName');
+      const cancelBtn = document.getElementById('btnCancelUser');
+      document.getElementById('userErrorMsg').classList.add('hidden');
+
+      input.value = currentUser || '';
+      cancelBtn.classList.toggle('hidden', isForced || !currentUser);
+
+      // แสดงรายชื่อผู้เล่นที่เคยเล่นในเครื่องนี้ให้กดสลับได้ทันที
+      const profiles = Object.values(getAllProfiles());
+      const recentBox = document.getElementById('recentUsersBox');
+      const recentList = document.getElementById('recentUsersList');
+      if (profiles.length > 0) {
+        recentBox.classList.remove('hidden');
+        recentList.innerHTML = profiles.map(prof => `
+          <button type="button" onclick="selectExistingUser('${prof.name.replace(/'/g, "\\'")}')"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+              prof.name.toLowerCase() === currentUser.toLowerCase()
+                ? 'bg-indigo-600/30 border-indigo-400 text-white'
+                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
+            }">
+            ${escapeHtml(prof.name)} (สูงสุด ${prof.bestScore.toLocaleString()})
+          </button>
+        `).join('');
+      } else {
+        recentBox.classList.add('hidden');
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => input.focus(), 100);
+    }
+
+    function closeUserModal() {
+      const modal = document.getElementById('modalUser');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function selectExistingUser(name) {
+      document.getElementById('inputUserName').value = name;
+      saveUserName();
+    }
+
+    function saveUserName() {
+      const raw = document.getElementById('inputUserName').value.trim();
+      if (raw.length < 2) {
+        document.getElementById('userErrorMsg').classList.remove('hidden');
+        return;
+      }
+      currentUser = raw;
+      SafeStorage.set(STORAGE_KEYS.CURRENT_USER, currentUser);
+
+      // สร้างหรือดึงโปรไฟล์เดิมมาใช้งานต่อ (ไม่บล็อกชื่อซ้ำ)
+      const prof = getUserProfile(currentUser);
+      prof.name = currentUser;
+      saveUserProfile(prof);
+
+      closeUserModal();
+      updateLobbyUI();
+      renderLeaderboards();
+    }
+
+    // เชื่อมต่อ Google Apps Script Web App
+    async function fetchGlobalLeaderboard(showToast = false) {
+      const statusEl = document.getElementById('syncStatusText');
+      const url = getScriptUrl();
+
+      // โหลดแคชเก่าก่อนเพื่อความเร็ว
+      try {
+        const cached = JSON.parse(SafeStorage.get(STORAGE_KEYS.GLOBAL_CACHE) || '[]');
+        if (Array.isArray(cached) && cached.length > 0 && globalLeaderboard.length === 0) {
+          globalLeaderboard = cached;
+          renderLeaderboards();
+        }
+      } catch (e) {}
+
+      if (!url) {
+        statusEl.textContent = 'โหมดออฟไลน์ (ยังไม่ตั้งค่า URL)';
+        mergeLocalIntoLeaderboard();
+        renderLeaderboards();
+        return;
+      }
+
+      statusEl.textContent = showToast ? 'กำลังรีเฟรชอันดับ...' : 'กำลังซิงค์ข้อมูลออนไลน์...';
+      try {
+        const res = await fetch(`${url}?t=${Date.now()}`, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        const data = await res.json();
+        if (data && Array.isArray(data.leaderboard)) {
+          globalLeaderboard = data.leaderboard;
+          mergeLocalIntoLeaderboard();
+          SafeStorage.set(STORAGE_KEYS.GLOBAL_CACHE, JSON.stringify(globalLeaderboard));
+          statusEl.textContent = 'อัปเดตออนไลน์เรียลไทม์แล้ว ✓';
+          statusEl.className = 'text-[11px] text-emerald-400';
+          if (currentUser) updateLobbyUI();
+          renderLeaderboards();
+        }
+      } catch (err) {
+        console.warn('Sync GET warning:', err);
+        statusEl.textContent = 'แสดงข้อมูลล่าสุดที่มีอยู่';
+        statusEl.className = 'text-[11px] text-amber-400';
+        mergeLocalIntoLeaderboard();
+        renderLeaderboards();
+      }
+    }
+
+    function mergeLocalIntoLeaderboard() {
+      const localProfiles = Object.values(getAllProfiles());
+      const map = new Map();
+
+      globalLeaderboard.forEach(item => {
+        if (!item || !item.name) return;
+        const key = String(item.name).trim().toLowerCase();
+        map.set(key, {
+          name: String(item.name).trim(),
+          maxLevel: Number(item.maxLevel) || 1,
+          bestScore: Number(item.bestScore) || 0,
+          bestTimePerLevel: item.bestTimePerLevel ? Number(item.bestTimePerLevel) : null
+        });
+      });
+
+      localProfiles.forEach(loc => {
+        if (!loc || !loc.name || loc.bestScore <= 0) return;
+        const key = loc.name.trim().toLowerCase();
+        const existing = map.get(key);
+        if (existing) {
+          existing.maxLevel = Math.max(existing.maxLevel, loc.maxLevel || 1);
+          existing.bestScore = Math.max(existing.bestScore, loc.bestScore || 0);
+          if (loc.bestTimePerLevel) {
+            existing.bestTimePerLevel = existing.bestTimePerLevel
+              ? Math.min(existing.bestTimePerLevel, loc.bestTimePerLevel)
+              : loc.bestTimePerLevel;
+          }
+        } else {
+          map.set(key, {
+            name: loc.name,
+            maxLevel: loc.maxLevel || 1,
+            bestScore: loc.bestScore || 0,
+            bestTimePerLevel: loc.bestTimePerLevel || null
+          });
+        }
+      });
+
+      globalLeaderboard = Array.from(map.values()).sort((a, b) => {
+        if (b.bestScore !== a.bestScore) return b.bestScore - a.bestScore;
+        if (b.maxLevel !== a.maxLevel) return b.maxLevel - a.maxLevel;
+        return (a.bestTimePerLevel || 999) - (b.bestTimePerLevel || 999);
+      });
+    }
+
+    async function pushScoreToOnline(profile) {
+      mergeLocalIntoLeaderboard();
+      SafeStorage.set(STORAGE_KEYS.GLOBAL_CACHE, JSON.stringify(globalLeaderboard));
+      renderLeaderboards();
+
+      const url = getScriptUrl();
+      if (!url || profile.bestScore <= 0) return;
+
+      const payload = JSON.stringify({
+        name: profile.name,
+        maxLevel: profile.maxLevel,
+        bestScore: profile.bestScore,
+        bestTimePerLevel: profile.bestTimePerLevel
+      });
+
+      try {
+        // ใช้ text/plain เพื่อหลีกเลี่ยง CORS Preflight บน Google Apps Script
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload
+        });
+        setTimeout(() => fetchGlobalLeaderboard(false), 1200);
+      } catch (e) {
+        console.warn('Push score warning:', e);
+      }
+    }
+
+    function renderLeaderboards() {
+      const lobbyList = document.getElementById('lobbyLeaderboardList');
+      const fullBody = document.getElementById('fullLeaderboardBody');
+      const totalCountEl = document.getElementById('totalPlayersCount');
+
+      totalCountEl.textContent = `ผู้เล่นทั้งหมด: ${globalLeaderboard.length} คน`;
+
+      if (globalLeaderboard.length === 0) {
+        lobbyList.innerHTML = `
+          <div class="text-center py-10 px-4 bg-slate-900/50 rounded-2xl border border-slate-800/80">
+            <div class="text-3xl mb-2">🥇</div>
+            <p class="text-sm text-slate-300 font-medium">ยังไม่มีข้อมูลอันดับ</p>
+            <p class="text-xs text-slate-400 mt-1">เป็นคนแรกที่สร้างสถิติบนกระดานนี้เลย!</p>
+          </div>`;
+        fullBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">ยังไม่มีข้อมูลอันดับ</td></tr>`;
+        return;
+      }
+
+      const rankBadge = (idx) => {
+        if (idx === 0) return '🥇';
+        if (idx === 1) return '🥈';
+        if (idx === 2) return '🥉';
+        return `#${idx + 1}`;
+      };
+
+      lobbyList.innerHTML = globalLeaderboard.slice(0, 7).map((item, idx) => {
+        const isMe = currentUser && item.name.toLowerCase() === currentUser.toLowerCase();
+        return `
+          <div class="flex items-center justify-between p-3 rounded-2xl border transition ${
+            isMe
+              ? 'bg-indigo-600/20 border-indigo-500/50'
+              : 'bg-slate-900/70 border-slate-800/90'
+          }">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-7 text-center font-bold text-sm ${idx < 3 ? 'text-lg' : 'text-slate-400'}">${rankBadge(idx)}</span>
+              <div class="truncate">
+                <div class="text-sm font-bold text-white truncate flex items-center gap-1.5">
+                  <span>${escapeHtml(item.name)}</span>
+                  ${isMe ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/40 text-indigo-200">คุณ</span>' : ''}
+                </div>
+                <div class="text-[11px] text-slate-400">
+                  สูงสุด ด่าน ${item.maxLevel} ${item.bestTimePerLevel ? `• เร็วสุด ${Number(item.bestTimePerLevel).toFixed(1)}วิ` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="text-right pl-2">
+              <div class="text-sm font-extrabold text-amber-400">${Number(item.bestScore).toLocaleString()}</div>
+              <div class="text-[10px] text-slate-400">คะแนน</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      fullBody.innerHTML = globalLeaderboard.slice(0, 30).map((item, idx) => {
+        const isMe = currentUser && item.name.toLowerCase() === currentUser.toLowerCase();
+        return `
+          <tr class="${isMe ? 'bg-indigo-600/20' : 'hover:bg-slate-800/40'}">
+            <td class="py-3 px-3 font-bold ${idx < 3 ? 'text-base' : 'text-slate-400'}">${rankBadge(idx)}</td>
+            <td class="py-3 px-3 font-semibold text-white">
+              ${escapeHtml(item.name)}
+              ${isMe ? '<span class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/40 text-indigo-200">คุณ</span>' : ''}
+            </td>
+            <td class="py-3 px-3 text-center text-indigo-300 font-semibold">ด่าน ${item.maxLevel}</td>
+            <td class="py-3 px-3 text-right text-emerald-400">${item.bestTimePerLevel ? Number(item.bestTimePerLevel).toFixed(1) + ' วิ' : '-'}</td>
+            <td class="py-3 px-3 text-right font-extrabold text-amber-400">${Number(item.bestScore).toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openLeaderboardModal() {
+      fetchGlobalLeaderboard(false);
+      const modal = document.getElementById('modalLeaderboard');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    function closeLeaderboardModal() {
+      const modal = document.getElementById('modalLeaderboard');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openSettingsModal() {
+      document.getElementById('inputScriptUrl').value = getScriptUrl();
+      const modal = document.getElementById('modalSettings');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    function closeSettingsModal() {
+      const modal = document.getElementById('modalSettings');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    function resetDefaultScriptUrl() {
+      document.getElementById('inputScriptUrl').value = DEFAULT_APPS_SCRIPT_URL;
+    }
+    function saveSettingsUrl() {
+      const val = document.getElementById('inputScriptUrl').value.trim();
+      SafeStorage.set(STORAGE_KEYS.SCRIPT_URL, val || DEFAULT_APPS_SCRIPT_URL);
+      closeSettingsModal();
+      fetchGlobalLeaderboard(true);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[s]));
+    }
+
+    // =========================================================================
+    // 4. PROCEDURAL SCENE GENERATOR & GAMEPLAY ENGINE
+    // =========================================================================
+    const THEMES = [
+      { name: 'ห้วงอวกาศลึกลับ', bgTop: '#090d16', bgBot: '#1e1b4b', palette: ['#38bdf8', '#f472b6', '#facc15', '#a78bfa', '#34d399', '#fb923c'] },
+      { name: 'มหานครยามค่ำคืน', bgTop: '#0f172a', bgBot: '#311042', palette: ['#f43f5e', '#38bdf8', '#fbbf24', '#2dd4bf', '#c084fc', '#fb7185'] },
+      { name: 'โลกใต้ท้องทะเลลึก', bgTop: '#042f2e', bgBot: '#0c4a6e', palette: ['#2dd4bf', '#38bdf8', '#fb7185', '#facc15', '#818cf8', '#4ade80'] },
+      { name: 'ป่าเวทมนตร์เรืองแสง', bgTop: '#052e16', bgBot: '#1e1b4b', palette: ['#4ade80', '#a3e635', '#f472b6', '#38bdf8', '#fbbf24', '#c084fc'] },
+      { name: 'ห้องทดลองไซไฟ', bgTop: '#111827', bgBot: '#1f2937', palette: ['#22d3ee', '#f97316', '#a855f7', '#10b981', '#eab308', '#ef4444'] },
+      { name: 'ทะเลทรายยามสนธยา', bgTop: '#451a03', bgBot: '#7c2d12', palette: ['#fbbf24', '#fb923c', '#f87171', '#38bdf8', '#fde047', '#f472b6'] }
+    ];
+
+    let gameState = {
+      level: 1,
+      score: 0,
+      hints: 2,
+      timeLimit: 60,
+      timeLeft: 60,
+      timerInterval: null,
+      items: [],
+      differences: [], // { index, found, hintPulse }
+      isPlaying: false,
+      theme: THEMES[0]
+    };
+
+    const canvasLeft = document.getElementById('canvasLeft');
+    const canvasRight = document.getElementById('canvasRight');
+    const ctxLeft = canvasLeft.getContext('2d');
+    const ctxRight = canvasRight.getContext('2d');
+
+    function startNewGame() {
+      if (!currentUser) {
+        openUserModal(true);
+        return;
+      }
+      const prof = getUserProfile(currentUser);
+      prof.gamesPlayed = (prof.gamesPlayed || 0) + 1;
+      saveUserProfile(prof);
+
+      gameState.level = 1;
+      gameState.score = 0;
+      gameState.hints = 2;
+
+      document.getElementById('viewLobby').classList.add('hidden');
+      document.getElementById('viewGame').classList.remove('hidden');
+      document.getElementById('viewGame').classList.add('flex');
+
+      setupLevel(1);
+    }
+
+    function setupLevel(level) {
+      gameState.level = level;
+      gameState.theme = THEMES[(level - 1) % THEMES.length];
+
+      // ความยากไต่ระดับตามเลเวล
+      const diffCount = Math.min(3 + Math.floor((level - 1) / 2), 9);
+      const totalObjects = Math.min(18 + level * 4, 58);
+      const scaleFactor = Math.max(0.58, 1 - (level - 1) * 0.035);
+      gameState.timeLimit = Math.max(30, 65 - (level - 1) * 2);
+      gameState.timeLeft = gameState.timeLimit;
+
+      // สร้างวัตถุในฉากแบบไม่ซ้อนทับกันเกินไป
+      const items = [];
+      const shapes = ['circle', 'star', 'triangle', 'diamond', 'hex', 'ring', 'planet', 'cross'];
+      const margin = 48;
+      const W = 600, H = 450;
+
+      for (let i = 0; i < totalObjects; i++) {
+        let placed = false;
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const r = (16 + Math.random() * 20) * scaleFactor;
+          const x = margin + Math.random() * (W - margin * 2);
+          const y = margin + Math.random() * (H - margin * 2);
+          const overlap = items.some(it => Math.hypot(it.x - x, it.y - y) < (it.r + r + 8));
+          if (!overlap) {
+            const color = gameState.theme.palette[Math.floor(Math.random() * gameState.theme.palette.length)];
+            let altColor = gameState.theme.palette[Math.floor(Math.random() * gameState.theme.palette.length)];
+            while (altColor === color) {
+              altColor = gameState.theme.palette[Math.floor(Math.random() * gameState.theme.palette.length)];
+            }
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            let altShape = shapes[Math.floor(Math.random() * shapes.length)];
+            while (altShape === shape) {
+              altShape = shapes[Math.floor(Math.random() * shapes.length)];
+            }
+
+            items.push({
+              x, y, r,
+              shape,
+              altShape,
+              color,
+              altColor,
+              rotation: Math.random() * Math.PI * 2,
+              diffType: null // 'color' | 'shape' | 'missing' | 'size'
+            });
+            placed = true;
+            break;
+          }
+        }
+      }
+
+      // เลือกจุดแตกต่าง
+      const indices = items.map((_, idx) => idx).sort(() => Math.random() - 0.5);
+      const chosen = indices.slice(0, Math.min(diffCount, items.length));
+      const diffTypes = ['color', 'shape', 'missing', 'size'];
+
+      gameState.differences = chosen.map(idx => {
+        const dtype = diffTypes[Math.floor(Math.random() * diffTypes.length)];
+        items[idx].diffType = dtype;
+        return { index: idx, found: false, hintPulse: 0 };
+      });
+
+      gameState.items = items;
+      gameState.isPlaying = true;
+
+      updateGameHUD();
+      renderCanvases();
+      startTimer();
+    }
+
+    function startTimer() {
+      clearInterval(gameState.timerInterval);
+      let lastTick = performance.now();
+      gameState.timerInterval = setInterval(() => {
+        if (!gameState.isPlaying) return;
+        const now = performance.now();
+        const dt = (now - lastTick) / 1000;
+        lastTick = now;
+        gameState.timeLeft = Math.max(0, gameState.timeLeft - dt);
+
+        updateTimerUI();
+        if (gameState.differences.some(d => d.hintPulse > 0)) {
+          gameState.differences.forEach(d => {
+            if (d.hintPulse > 0) d.hintPulse = Math.max(0, d.hintPulse - dt);
+          });
+          renderCanvases();
+        }
+
+        if (gameState.timeLeft <= 0) {
+          handleTimeOut();
+        }
+      }, 60);
+    }
+
+    function updateTimerUI() {
+      const pct = (gameState.timeLeft / gameState.timeLimit) * 100;
+      document.getElementById('hudTimeText').textContent = `${gameState.timeLeft.toFixed(1)} วิ`;
+      document.getElementById('hudTimeBar').style.width = `${pct}%`;
+    }
+
+    function updateGameHUD() {
+      const foundCount = gameState.differences.filter(d => d.found).length;
+      document.getElementById('hudLevel').textContent = `ด่าน ${gameState.level}`;
+      document.getElementById('hudTheme').textContent = gameState.theme.name;
+      document.getElementById('hudFound').textContent = `${foundCount} / ${gameState.differences.length}`;
+      document.getElementById('hudScore').textContent = gameState.score.toLocaleString();
+      document.getElementById('hudHints').textContent = gameState.hints;
+      updateTimerUI();
+    }
+
+    function renderCanvases() {
+      drawScene(ctxLeft, false);
+      drawScene(ctxRight, true);
+    }
+
+    function drawScene(ctx, isRight) {
+      const W = 600, H = 450;
+      // พื้นหลังไล่เฉดสีตามธีม
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, gameState.theme.bgTop);
+      grad.addColorStop(1, gameState.theme.bgBot);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // ตารางเส้นกริดบางๆ เพิ่มมิติ
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      // วาดวัตถุทั้งหมด
+      gameState.items.forEach((item, idx) => {
+        let shape = item.shape;
+        let color = item.color;
+        let r = item.r;
+        let skip = false;
+
+        if (isRight && item.diffType) {
+          if (item.diffType === 'color') color = item.altColor;
+          else if (item.diffType === 'shape') shape = item.altShape;
+          else if (item.diffType === 'missing') skip = true;
+          else if (item.diffType === 'size') r = item.r * 0.62;
+        }
+
+        if (!skip) {
+          drawShape(ctx, shape, item.x, item.y, r, color, item.rotation);
+        }
+      });
+
+      // วาดวงกลมเฉลยจุดที่พบแล้ว และวงกลม Hint
+      gameState.differences.forEach(diff => {
+        const it = gameState.items[diff.index];
+        if (diff.found) {
+          ctx.save();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#10b981';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(it.x, it.y, Math.max(it.r + 10, 24), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        } else if (diff.hintPulse > 0) {
+          ctx.save();
+          const pulseR = Math.max(it.r + 14, 28) + Math.sin(diff.hintPulse * 12) * 5;
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc(it.x, it.y, pulseR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
+
+    function drawShape(ctx, shape, x, y, r, color, rotation) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+
+      ctx.beginPath();
+      if (shape === 'circle') {
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape === 'ring') {
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.lineWidth = Math.max(4, r * 0.28);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      } else if (shape === 'planet') {
+        ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.25, r * 0.32, 0.35, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      } else if (shape === 'triangle') {
+        for (let i = 0; i < 3; i++) {
+          const a = (i * 2 * Math.PI) / 3 - Math.PI / 2;
+          i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape === 'diamond') {
+        ctx.moveTo(0, -r * 1.15);
+        ctx.lineTo(r * 0.85, 0);
+        ctx.lineTo(0, r * 1.15);
+        ctx.lineTo(-r * 0.85, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape === 'hex') {
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3;
+          i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape === 'star') {
+        for (let i = 0; i < 10; i++) {
+          const rad = i % 2 === 0 ? r * 1.1 : r * 0.48;
+          const a = (i * Math.PI) / 5 - Math.PI / 2;
+          i === 0 ? ctx.moveTo(Math.cos(a) * rad, Math.sin(a) * rad) : ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape === 'cross') {
+        const w = r * 0.36;
+        ctx.rect(-w, -r, w * 2, r * 2);
+        ctx.rect(-r, -w, r * 2, w * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // จัดการการคลิก/แตะบนภาพซ้ายและขวา
+    function handleCanvasClick(e, wrapperEl) {
+      if (!gameState.isPlaying) return;
+      const rect = wrapperEl.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const scaleX = 600 / rect.width;
+      const scaleY = 450 / rect.height;
+      const x = (clientX - rect.left) * scaleX;
+      const y = (clientY - rect.top) * scaleY;
+
+      // ตรวจว่าตรงกับจุดแตกต่างที่ยังไม่พบหรือไม่
+      let matchedDiff = null;
+      let minDist = 9999;
+
+      gameState.differences.forEach(diff => {
+        if (diff.found) return;
+        const it = gameState.items[diff.index];
+        const hitRadius = Math.max(it.r + 16, 30);
+        const dist = Math.hypot(it.x - x, it.y - y);
+        if (dist <= hitRadius && dist < minDist) {
+          minDist = dist;
+          matchedDiff = diff;
+        }
+      });
+
+      const relX = clientX - rect.left;
+      const relY = clientY - rect.top;
+
+      if (matchedDiff) {
+        matchedDiff.found = true;
+        matchedDiff.hintPulse = 0;
+        const speedRatio = gameState.timeLeft / gameState.timeLimit;
+        const pts = Math.round(100 + speedRatio * 150);
+        gameState.score += pts;
+
+        sfxCorrect();
+        spawnFloatingBadge(wrapperEl, relX, relY, `+${pts}`, 'bg-emerald-500 text-slate-950');
+        updateGameHUD();
+        renderCanvases();
+
+        if (gameState.differences.every(d => d.found)) {
+          handleLevelWin();
+        }
+      } else {
+        // กดผิดจุด หักเวลา 3 วิ และหักคะแนนเล็กน้อย
+        gameState.timeLeft = Math.max(0, gameState.timeLeft - 3);
+        gameState.score = Math.max(0, gameState.score - 25);
+        sfxWrong();
+        wrapperEl.classList.remove('shake');
+        void wrapperEl.offsetWidth;
+        wrapperEl.classList.add('shake');
+        spawnFloatingBadge(wrapperEl, relX, relY, '-3 วิ', 'bg-rose-500 text-white');
+        updateGameHUD();
+
+        if (gameState.timeLeft <= 0) {
+          handleTimeOut();
+        }
+      }
+    }
+
+    canvasLeft.addEventListener('click', (e) => handleCanvasClick(e, document.getElementById('wrapLeft')));
+    canvasRight.addEventListener('click', (e) => handleCanvasClick(e, document.getElementById('wrapRight')));
+
+    function spawnFloatingBadge(container, x, y, text, colorClasses) {
+      const badge = document.createElement('div');
+      badge.className = `floating-badge ${colorClasses}`;
+      badge.style.left = `${x}px`;
+      badge.style.top = `${y}px`;
+      badge.textContent = text;
+      container.appendChild(badge);
+      setTimeout(() => badge.remove(), 900);
+    }
+
+    function useHint() {
+      if (!gameState.isPlaying || gameState.hints <= 0) return;
+      const unfound = gameState.differences.find(d => !d.found);
+      if (!unfound) return;
+
+      gameState.hints -= 1;
+      unfound.hintPulse = 3.5;
+      playTone(740, 'sine', 0.18, 0.14);
+      updateGameHUD();
+      renderCanvases();
+    }
+
+    function handleLevelWin() {
+      gameState.isPlaying = false;
+      clearInterval(gameState.timerInterval);
+      sfxWin();
+
+      const timeUsed = Math.max(0.5, gameState.timeLimit - gameState.timeLeft);
+      const speedRatio = gameState.timeLeft / gameState.timeLimit;
+      const timeBonus = Math.round(speedRatio * (300 + gameState.level * 50));
+      gameState.score += timeBonus;
+
+      // อัปเดตสถิติผู้เล่นคนปัจจุบัน
+      const prof = getUserProfile(currentUser);
+      prof.maxLevel = Math.max(prof.maxLevel || 1, gameState.level + 1);
+      prof.bestScore = Math.max(prof.bestScore || 0, gameState.score);
+      prof.bestTimePerLevel = prof.bestTimePerLevel
+        ? Math.min(prof.bestTimePerLevel, timeUsed)
+        : timeUsed;
+      saveUserProfile(prof);
+      pushScoreToOnline(prof);
+
+      // แสดง Modal ผ่านด่าน
+      document.getElementById('resultIcon').textContent = '🎉';
+      document.getElementById('resultIcon').className = 'w-16 h-16 mx-auto mb-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-4xl';
+      document.getElementById('resultTitle').textContent = `ผ่านด่านที่ ${gameState.level} สำเร็จ!`;
+      document.getElementById('resultSubtitle').textContent = 'ความเร็วสูงมาก รับโบนัสตามสัดส่วนเวลาที่เหลือ';
+      document.getElementById('resTimeUsed').textContent = `${timeUsed.toFixed(2)} วินาที`;
+      document.getElementById('resTimeBonus').textContent = `+${timeBonus.toLocaleString()} คะแนน`;
+      document.getElementById('resTotalScore').textContent = gameState.score.toLocaleString();
+
+      document.getElementById('resultActions').innerHTML = `
+        <button onclick="exitToLobby()"
+          class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition">
+          กลับหน้าหลัก
+        </button>
+        <button onclick="nextLevel()"
+          class="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-sm sm:text-base shadow-lg transition">
+          ไปด่านที่ ${gameState.level + 1} ➔
+        </button>
+      `;
+
+      const modal = document.getElementById('modalResult');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function handleTimeOut() {
+      gameState.isPlaying = false;
+      clearInterval(gameState.timerInterval);
+      sfxLose();
+
+      const prof = getUserProfile(currentUser);
+      prof.maxLevel = Math.max(prof.maxLevel || 1, gameState.level);
+      prof.bestScore = Math.max(prof.bestScore || 0, gameState.score);
+      saveUserProfile(prof);
+      pushScoreToOnline(prof);
+
+      document.getElementById('resultIcon').textContent = '⏰';
+      document.getElementById('resultIcon').className = 'w-16 h-16 mx-auto mb-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-4xl';
+      document.getElementById('resultTitle').textContent = 'หมดเวลา!';
+      document.getElementById('resultSubtitle').textContent = `คุณไปได้ถึงด่านที่ ${gameState.level} บันทึกคะแนนลงอันดับแล้ว`;
+      document.getElementById('resTimeUsed').textContent = `${gameState.timeLimit.toFixed(1)} วินาที (หมดเวลา)`;
+      document.getElementById('resTimeBonus').textContent = '+0 คะแนน';
+      document.getElementById('resTotalScore').textContent = gameState.score.toLocaleString();
+
+      document.getElementById('resultActions').innerHTML = `
+        <button onclick="exitToLobby()"
+          class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition">
+          ดูอันดับ / หน้าหลัก
+        </button>
+        <button onclick="restartFromResult()"
+          class="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm sm:text-base shadow-lg transition">
+          เล่นใหม่อีกครั้ง ↻
+        </button>
+      `;
+
+      const modal = document.getElementById('modalResult');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function nextLevel() {
+      const modal = document.getElementById('modalResult');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      setupLevel(gameState.level + 1);
+    }
+
+    function restartFromResult() {
+      const modal = document.getElementById('modalResult');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      startNewGame();
+    }
+
+    function confirmQuitGame() {
+      gameState.isPlaying = false;
+      clearInterval(gameState.timerInterval);
+      exitToLobby();
+    }
+
+    function exitToLobby() {
+      const modal = document.getElementById('modalResult');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+
+      document.getElementById('viewGame').classList.add('hidden');
+      document.getElementById('viewGame').classList.remove('flex');
+      document.getElementById('viewLobby').classList.remove('hidden');
+
+      updateLobbyUI();
+      fetchGlobalLeaderboard(false);
+    }
+
+    // =========================================================================
+    // 5. INITIALIZE ON PAGE LOAD
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateLobbyUI();
+      fetchGlobalLeaderboard(false);
+    });
+  </script>
+</body>
+</html>
